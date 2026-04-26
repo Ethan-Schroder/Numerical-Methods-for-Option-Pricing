@@ -146,7 +146,7 @@ All pricers expose the following Greeks at the target spot price `S0`, as well a
 # Point Greeks at S0
 greeks = pricer.greeks_at(S=100)
 print(greeks)
-# {'delta': 0.637, 'gamma': 0.019, 'theta': -6.41}
+# {'delta': -0.363, 'gamma': 0.019, 'theta': 1.658}
 
 # Price at an arbitrary spot value
 price = pricer.price_at(S=105)
