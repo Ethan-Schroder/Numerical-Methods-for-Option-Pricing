@@ -215,8 +215,8 @@ pip install numpy scipy matplotlib
 ## Author
 
 Numerical Methods for Option Pricing Project
-Ethan Schroder
 
+Ethan Schroder
 
 ---
 
