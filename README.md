@@ -82,8 +82,8 @@ pricer.solve()
 print(pricer)
 # BlackScholesPricer(call, S0=100, K=100, T=1.0, r=0.05, sigma=0.2 | price=10.4506)
 
-print(pricer.result["delta"])  # 0.6368
-print(pricer.result["gamma"])  # 0.0188
+print(pricer.result["delta"])  
+print(pricer.result["gamma"])  
 ```
 
 ### American Put — Crank–Nicolson
