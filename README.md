@@ -212,6 +212,14 @@ pip install numpy scipy matplotlib
 
 ---
 
+## Author
+
+Numerical Methods for Option Pricing Project
+Ethan Schroder
+
+
+---
+
 ## References
 
 - Black, F. & Scholes, M. (1973). *The Pricing of Options and Corporate Liabilities.* Journal of Political Economy.
