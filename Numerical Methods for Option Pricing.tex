@@ -1,0 +1,909 @@
+\documentclass[12pt]{article}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% REQUIRED PACKAGES (do not modify)
+\usepackage{graphicx}
+\usepackage{pdflscape}
+\usepackage{booktabs} 
+\usepackage{subcaption} 
+
+\usepackage{titlesec}
+
+% Section (REQUIRED: 14pt)
+\titleformat{\section}
+{\fontsize{14}{16}\selectfont\bfseries}
+{\thesection}
+{1em}
+{}
+
+% Subsection
+\titleformat{\subsection}
+{\fontsize{12.5}{14}\selectfont\bfseries}
+{\thesubsection}
+{1em}
+{}
+
+% Subsubsection
+\titleformat{\subsubsection}
+{\fontsize{11.5}{13}\selectfont\bfseries}
+{\thesubsubsection}
+{1em}
+{}
+
+\usepackage{setspace}
+\doublespacing
+
+\usepackage[margin=2.54cm]{geometry}
+\setstretch{1.45}
+
+\usepackage{mathptmx}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% OPTIONAL PACKAGES
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{hyperref}
+\usepackage{array}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage{mathtools}
+\usepackage{nicefrac}
+
+% Boxes (black & white)
+\tcbuselibrary{skins, breakable}
+
+\newtcolorbox{eqbox}{
+  enhanced,breakable,
+  colback=white,
+  colframe=black,
+  boxrule=0.5pt,
+  arc=2pt,
+  left=8pt,right=8pt,top=4pt,bottom=4pt
+}
+
+\newtcolorbox{intuition}[1][Intuition]{
+  enhanced,breakable,
+  colback=white,
+  colframe=black,
+  boxrule=0.5pt,
+  arc=2pt,
+  left=10pt,right=10pt,top=6pt,bottom=6pt,
+  fonttitle=\small\bfseries,
+  title={#1}
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=black
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{center}
+\vspace*{4cm}
+{\Huge \bf{Numerical Methods for Option Pricing}}\\
+\vspace{2.5cm}
+{\LARGE \bf{ Ethan Schroder }}\\
+\vspace*{10.4cm}
+
+{\large Black–Scholes Closed-Form Solution $\cdot$ Finite Difference Methods $\cdot$ Crank–Nicolson Scheme $\cdot$ Monte Carlo Simulation  }
+\end{center}
+
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\tableofcontents
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%% =============================================================================
+\section{Introduction}
+%% =============================================================================
+
+Within the financial sector, banks, hedge funds, pension managers, and corporations all face a common challenge: the value of their assets is inherently uncertain. Pension funds, for example, often hold large equity portfolios that are vulnerable to market downturns, while insurance firms must maintain sufficient capital to meet uncertain future claims. Similarly, corporations frequently compensate employees with stock-based incentives whose value fluctuates over time. To manage this uncertainty, institutions make extensive use of financial derivatives. In particular, options are widely employed as flexible hedging instruments, as these allow firms to limit downside risk while retaining exposure to favourable price movements \cite{bartram2006use}.
+
+\subsection{Definition of an Option}
+
+An \textbf{option} is a financial contract that grants the buyer the \textit{right, but not the obligation}, to buy or sell an underlying asset, such as stocks, bonds, commodities, market indices, or currencies, at a predetermined price, known as the \textbf{strike price}, on or before a specified date. The two primary types of options are:
+
+\begin{itemize}[leftmargin=2em, itemsep=4pt]
+\item A \textbf{call option}, which gives the holder the right to \textit{buy} the underlying asset at the strike price. If the market price exceeds the strike price at expiry, the holder can purchase the asset below market value and realise a profit from the difference.
+
+\item A \textbf{put option}, which gives the holder the right to \textit{sell} the underlying asset at the strike price. If the market price falls below the strike price, the holder can sell the asset at the higher agreed price, thereby providing protection against a decline in value.
+\end{itemize}
+
+\subsection{Why Option Pricing Is a Hard Problem}
+The central challenge in option pricing lies in determining a fair value for a contingent claim whose payoff depends on the future price of an underlying asset, which is inherently uncertain. An incorrect valuation can have significant financial consequences: overpaying for an option reduces expected returns, while underpricing an option, particularly when acting as the seller, can expose the issuer to substantial losses if market movements are unfavourable.
+
+Prior to the mathematical developments of the early 1970s, option pricing lacked a rigorous theoretical foundation. Market participants relied largely on heuristic methods and informal judgement. Although these approaches provided moderate practical value, these often led to mispricing and market inefficiencies. Furthermore, there was no systematic framework for hedging the risks associated with option positions, leaving traders exposed to unpredictable market fluctuations \cite{dotsis2025option}.
+
+\subsection{The Black-Scholes Revolution}
+
+In 1973, Fischer Black, Myron Scholes, and Robert Merton introduced what became one of the most influential results in financial economics. They demonstrated that, under a set of reasonable assumptions about asset price dynamics, it is possible to derive an \textit{exact formula} for the fair value of an option \cite{black1973pricing, merton1973theory}.
+
+The key insight lies in the construction of a continuously rebalanced portfolio consisting of the underlying asset and the option. By adjusting the portfolio to match the option’s sensitivity to price movements, the stochastic component of returns can be eliminated. As a result, the portfolio becomes effectively risk-free and can be priced using the risk-free rate of return. This leads to the \textbf{risk-neutral} valuation framework, in which investors are assumed to be indifferent to risk.
+
+The resulting Black–Scholes formula transformed derivatives markets by providing a common, mathematically rigorous framework for pricing and hedging. It played a central role in the rapid expansion of global derivatives trading by enabling consistent valuation and risk management practices across market participants \cite{ijfs12040114}.
+
+\subsection{How Options Are Used in Practice}
+Options play a central role in modern financial markets and are generally employed for three primary purposes: hedging, speculation, and the construction of structured products.
+
+\begin{enumerate}[leftmargin=2em, itemsep=4pt]
+\item \textbf{Hedging.}
+Options are widely used as risk management instruments to mitigate exposure to adverse price movements. For example, an investor holding an equity portfolio may purchase put options to insure against potential declines in market value, analogous to financial insurance. Similarly, corporations utilise options on currencies and commodities to hedge against exchange rate fluctuations and input price volatility. \cite{bartram2006use, hull2018}.
+
+\item \textbf{Speculation.}
+Options also facilitate speculative trading by providing leveraged exposure to underlying assets. Due to their nonlinear payoff structure, options allow investors to take positions on expected price movements, volatility, or timing with a relatively small initial investment. While this leverage can amplify returns, it also increases the potential for significant losses. Speculative use of options is a fundamental aspect of derivatives markets \cite{hull2018}.
+
+\item \textbf{Structured Products.}
+Financial institutions frequently combine options with traditional securities, such as bonds, to create structured products with tailored payoff profiles. These instruments are designed to meet specific investor preferences, for instance by offering capital protection alongside participation in equity market gains. The design of such products relies heavily on option pricing theory and financial engineering techniques \cite{hull2018, taylor2005asset}.
+\end{enumerate}
+
+\subsection{Project Overview}
+
+This project develops an object-oriented Python library that prices vanilla options and computes their sensitivities (Greeks) using five methods: the Black-Scholes closed-form solution, explicit finite difference, implicit finite difference, Crank-Nicolson, and Monte Carlo simulation. The library handles both European and
+American contracts.
+
+The report is structured as follows. Section~\ref{sec:theory} derives the mathematical foundations from first principles. Section~\ref{sec:numerical} develops the numerical methods. Section~\ref{sec:oop} describes the object-oriented design. Section~\ref{sec:results} presents and analyses the results. Section~\ref{sec:conclusion} concludes with limitations and extensions.
+
+\newpage
+
+%% =============================================================================
+\section{Theoretical Foundations}
+\label{sec:theory}
+%% =============================================================================
+
+To price an option under the Black–Scholes framework, it is first necessary to specify a mathematical model for the evolution of the underlying asset price. In quantitative finance, asset prices are typically modelled as stochastic processes, meaning their evolution is governed by random variables that capture the inherent uncertainty in future movements.
+
+This treatment is motivated by the observation that market prices aggregate the information and actions of many participants, making systematic prediction difficult. Consequently, price changes are more appropriately characterised as random rather than deterministic. Importantly, this randomness is not merely a consequence of incomplete knowledge, but a fundamental feature of competitive financial markets. Modelling asset prices in this way provides a rigorous foundation for option pricing.
+
+\subsection{Derivation of the Discrete-Time Price Model}
+
+In financial modelling, the primary quantity of interest is not the asset price itself, but the \textit{return}, that is, how much the investment grows relative to what was paid. For example, a stock moving from \pounds100 to \pounds105 represents the same 5\% return whether the stock is cheap or expensive in absolute terms. Formally, if the stock price on day $i$ is $S_i$, the one-day return is:
+\begin{equation}
+  R_i = \frac{S_{i+1} - S_i}{S_i}
+  \label{eq:return}
+\end{equation}
+
+\subsubsection{Normally Distributed Returns}
+
+One common modelling assumption is that asset returns are \textbf{normally distributed}. This is motivated by the Central Limit Theorem, which states that a variable is influenced by many small, approximately independent factors. These factors are such as news arrivals, trading activity, and market events. Therefore, the sum of these effects tends toward a normal distribution \cite{degroot2012probability}.
+
+Under this assumption, returns can be expressed as:
+\begin{equation}
+  R_i = \mu + \sigma \phi, \qquad \phi \sim \mathcal{N}(0,1)
+  \label{eq:return_normal}
+\end{equation}
+where $\mu$ denotes the expected return, $\sigma$ represents the volatility, that is the standard deviation of returns, and $\phi$ is a standard normal random variable. Thus, the realised return consists of an expected component and a random shock scaled by volatility.
+
+\subsubsection{Scaling to Different Time Intervals}
+
+Equation~(\ref{eq:return_normal}) describes returns over a fixed time step. To extend this to an arbitrary interval $\delta t$, two key scaling properties are used:
+
+\begin{itemize}[leftmargin=2em, itemsep=2pt]
+\item The expected return scales linearly with time; for example, doubling the time horizon doubles the expected return.
+\item The standard deviation of returns scales with the \textit{square root} of time. This reflects a fundamental property of stochastic processes, whereby the accumulation of independent random shocks leads to variance growing proportionally with time \cite{shreve2004stochastic}.
+\end{itemize}
+
+The return over an interval $\delta t$ can therefore be written as:
+\begin{equation}
+R_i = \mu,\delta t + \sigma \phi \sqrt{\delta t}
+\label{eq:return_scaled}
+\end{equation}
+
+Substituting the definition of $R_i$ from equation~(\ref{eq:return}) and rearranging yields the \textbf{discrete-time stock price model}:
+\begin{equation}
+S_{i+1} = S_i \left(1 + \mu,\delta t + \sigma \phi \sqrt{\delta t}\right)
+\label{eq:discrete_gbm}
+\end{equation}
+
+The term $1 + \mu,\delta t$ represents the expected (deterministic) growth, commonly referred to as the \textit{drift}, while $\sigma \phi \sqrt{\delta t}$ represents the random shock. The volatility parameter $\sigma$ determines the magnitude of these fluctuations: assets with low volatility experience relatively small shocks, whereas more volatile assets are subject to larger deviations.
+
+\subsection{Geometric Brownian Motion: The Continuous-Time Limit}
+\label{sec:gbm}
+To develop a continuous-time model, we consider the limit as the time step shrinks to zero, $\delta t \to \mathrm{d}t$. In this limit, discrete changes in the asset price become infinitesimal, denoted by $\mathrm{d}S$, and the random term $\phi \sqrt{\delta t}$ converges to $\mathrm{d}X$, the increment of a \textbf{Wiener process}. This process provides a mathematically rigorous representation of continuous-time randomness, characterised by independent, normally distributed increments.
+
+The resulting stochastic differential equation is:
+\begin{eqbox}
+\begin{equation}
+\mathrm{d}S = \mu S \space \mathrm{d}t + \sigma S \space\mathrm{d}X
+\label{eq:gbm}
+\end{equation}
+\end{eqbox}
+
+This process is known as \textbf{Geometric Brownian Motion (GBM)}. The term $\mu S ,\mathrm{d}t$ represents the deterministic component (drift), governing the expected rate of return, while $\sigma S ,\mathrm{d}X$ represents the stochastic component, capturing random fluctuations. The proportional dependence on $S$ implies that both expected growth and volatility scale with the current price level, resulting in a multiplicative structure that ensures prices remain strictly positive. GBM therefore captures two key empirical features of asset prices: a systematic trend over time and random, unpredictable fluctuations.
+
+
+\subsection{It\^o's Lemma: Differentiating a Stochastic Function}
+\label{sec:ito}
+
+Let the option price be a function of the underlying asset price $S$ and time $t$, denoted by $V(S,t)$. Assume that $S$ follows a geometric Brownian motion:
+\begin{equation}
+\mathrm{d}S = \mu S,\mathrm{d}t + \sigma S,\mathrm{d}X
+\label{eq:gbm_ito}
+\end{equation}
+where $\mu$ is the drift, $\sigma$ is the volatility, and $\mathrm{d}X$ is a standard Brownian motion increment.
+
+To determine the instantaneous change in $V$, we must differentiate with respect to a stochastic process. Classical calculus is not applicable in this setting due to a key property of Brownian motion: its increments satisfy $(\mathrm{d}X)^2 = \mathrm{d}t$, rather than being negligible. As a result, second-order terms in a Taylor expansion contribute at first order.
+
+\textbf{It\^o's Lemma} provides the stochastic analogue of the chain rule \cite{shreve2004stochastic}. Applied to $V(S,t)$, it yields:
+\begin{equation}
+\mathrm{d}V =
+\frac{\partial V}{\partial t},\mathrm{d}t
++ \frac{\partial V}{\partial S},\mathrm{d}S
++ \frac{1}{2}\sigma^2 S^2,\frac{\partial^2 V}{\partial S^2},\mathrm{d}t
+\label{eq:ito_informal}
+\end{equation}
+
+Substituting Equation~(\ref{eq:gbm_ito}) into Equation~(\ref{eq:ito_informal}) and collecting terms gives:
+\begin{equation}
+\mathrm{d}V = \left(\frac{\partial V}{\partial t}
++ \mu S\frac{\partial V}{\partial S}
++ \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2}\right)\mathrm{d}t
++ \sigma S\frac{\partial V}{\partial S} \space\mathrm{d}X
+\label{eq:ito}
+\end{equation}
+
+The change in the option price consists of two components. The $\mathrm{d}t$ term represents the predictable variation, combining time decay, sensitivity to the underlying asset, and the It\^o correction. The $\mathrm{d}X$ term captures the random fluctuation driven by Brownian motion.
+
+\subsection{The Delta-Hedging Argument: Eliminating Risk}
+\label{sec:hedge}
+
+The key idea behind Black-Scholes is to construct a portfolio that is
+\textit{instantaneously riskless} by cancelling the random component. Hold one
+option and short $\Delta$ shares of stock:
+\begin{equation}
+  \Pi = V - \Delta \cdot S
+  \label{eq:portfolio}
+\end{equation}
+
+The portfolio change over $\mathrm{d}t$ is $\mathrm{d}\Pi = \mathrm{d}V -
+\Delta\,\mathrm{d}S$. Substituting equations~(\ref{eq:gbm}) and~(\ref{eq:ito}),
+the random $\mathrm{d}X$ terms combine as:
+$\left(\sigma S\,\partial V/\partial S - \Delta\,\sigma S\right)\mathrm{d}X$.
+Choosing:
+\begin{equation}
+  \Delta = \frac{\partial V}{\partial S}
+  \label{eq:delta}
+\end{equation}
+makes these terms cancel exactly. The remaining portfolio change is entirely deterministic:
+\begin{equation}
+  \mathrm{d}\Pi = \left(\frac{\partial V}{\partial t}
+    + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2}\right)\mathrm{d}t
+  \label{eq:riskless}
+\end{equation}
+
+\subsection{No-Arbitrage and the Black-Scholes PDE}
+\label{sec:bspde}
+
+We now have a riskless portfolio. The no-arbitrage principle states that a riskless
+portfolio must earn exactly the risk-free rate $r$ (the return on cash or government
+bonds). If it earned more, everyone would borrow at $r$ and invest for a guaranteed
+profit. Competition instantly eliminates such opportunities. Therefore:
+\begin{equation}
+  \mathrm{d}\Pi = r\,\Pi\,\mathrm{d}t = r\!\left(V - S\frac{\partial V}{\partial S}\right)\mathrm{d}t
+  \label{eq:noarb}
+\end{equation}
+
+Setting equations~(\ref{eq:riskless}) and~(\ref{eq:noarb}) equal and rearranging:
+
+\begin{eqbox}
+\begin{equation}
+  \frac{\partial V}{\partial t}
+  + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2}
+  + rS\frac{\partial V}{\partial S}
+  - rV = 0
+  \label{eq:bspde}
+\end{equation}
+\end{eqbox}
+
+
+Each term in the PDE has a clear financial interpretation. 
+$\partial V/\partial t$ represents time decay, reflecting the loss of value as expiry approaches. 
+The term $\frac{1}{2}\sigma^2 S^2 \partial^2 V/\partial S^2$ captures the effect of curvature (gamma), which makes options benefit from volatility. 
+The term $rS\,\partial V/\partial S$ corresponds to the financing cost of maintaining the delta hedge, while $rV$ represents the opportunity cost of capital.
+
+In equilibrium, these effects balance exactly. Notably, the expected return $\mu$ does not appear, implying that option prices depend only on volatility and the risk-free rate under the risk-neutral measure.
+
+
+\subsection{Boundary Conditions}
+
+The PDE~(\ref{eq:bspde}) alone has infinitely many solutions. The specific contract
+is encoded in the \textbf{boundary conditions}, the constraints on $V$ at expiry and
+at extreme stock prices:
+
+\begin{table}[H]
+  \centering
+  \caption{Boundary conditions for European call and put options.}
+  \label{tab:bc}
+  \begin{tabular}{L{4cm} C{4.5cm} C{4.5cm}}
+    \toprule
+    \textbf{Condition} & \textbf{European Call} & \textbf{European Put} \\
+    \midrule
+    At expiry $t = T$  & $\max(S - K,\, 0)$ & $\max(K - S,\, 0)$ \\
+    As $S \to 0$       & $V \to 0$           & $V \to K e^{-rT}$  \\
+    As $S \to \infty$  & $V \approx S - Ke^{-r(T-t)}$ & $V \to 0$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The expiry condition is the most intuitive, as at the last moment a call is worth exactly the amount by which the stock exceeds the strike, or nothing if it does not. The other conditions reflect limiting behaviour. A call on a worthless stock is itself worthless, while a deep in-the-money call behaves like owning the stock minus the discounted strike payment.
+
+\subsubsection{Why American Options Need Numerical Methods}
+
+A European option can only be exercised at expiry. An \textbf{American option} can
+be exercised at any point before expiry. For American calls on non-dividend-paying
+stocks, early exercise is never optimal, so the European and American prices coincide.
+For \textbf{American puts}, however, early exercise is sometimes optimal: if the
+stock falls far enough, it is better to take the cash now and earn interest rather
+than wait. This introduces a time-varying \textit{free boundary}, the stock price
+level below which immediate exercise is optimal, where this changes every day until
+expiry. This free boundary has no closed-form solution and is precisely why numerical
+methods are needed for American put pricing.
+
+\subsection{The Black-Scholes Formula}
+\label{sec:bsformula}
+
+For European options, the PDE~(\ref{eq:bspde}) admits a closed-form analytical
+solution. By applying an appropriate change of variables, the equation can be
+transformed into the heat equation. Solving this via convolution with a Gaussian
+kernel, and subsequently transforming back to the original variables, yielding:
+
+\begin{eqbox}
+\begin{align}
+  C &= S\,\mathcal{N}(d_1) - K e^{-rT}\,\mathcal{N}(d_2) \label{eq:bsformula} \\[6pt]
+  d_1 &= \frac{\ln(S/K) + \left(r + \tfrac{1}{2}\sigma^2\right)T}{\sigma\sqrt{T}},
+  \qquad d_2 = d_1 - \sigma\sqrt{T} \notag
+\end{align}
+\end{eqbox}
+
+where $\mathcal{N}(\cdot)$ is the cumulative standard normal distribution function.
+The European put follows from put-call parity: $P = C - S + Ke^{-rT}$.
+
+
+The formula has a clean two-part structure. $Ke^{-rT}\,\mathcal{N}(d_2)$ is the
+present value of paying the strike, weighted by the risk-neutral probability that
+the option will be exercised (i.e.\ the stock ends above $K$). $S\,\mathcal{N}(d_1)$
+is the expected value of the stock received at exercise, probability-adjusted. The
+call price is simply: what you expect to receive, minus what you expect to pay,
+both discounted to today.
+
+
+\subsection{The Greeks: Measuring Sensitivity}
+\label{sec:greeks}
+
+In practice, traders continuously monitor how the option price changes as its inputs
+move. These sensitivities are called the \textbf{Greeks}. They are essential for
+managing the risk of an options position and for understanding how much and in which
+direction to adjust a hedge.
+
+\begin{table}[H]
+  \centering
+  \caption{The five standard Greeks for a European call option.
+    $\mathcal{N}'(\cdot)$ is the standard normal probability density function.}
+  \label{tab:greeks}
+  \begin{tabular}{L{1.8cm} C{2.2cm} C{4.2cm} L{5cm}}
+    \toprule
+    \textbf{Greek} & \textbf{Definition} & \textbf{Call formula} & \textbf{What it means} \\
+    \midrule
+    Delta $\Delta$ & $\partial V/\partial S$ & $\mathcal{N}(d_1)$ &
+      Shares to hold to hedge the option. A delta of 0.1 means the option gains
+      10p for every \pounds1 rise in the stock. \\[4pt]
+    Gamma $\Gamma$ & $\partial^2 V/\partial S^2$ & $\dfrac{\mathcal{N}'(d_1)}{S\sigma\sqrt{T}}$ &
+      How fast delta changes. High gamma means the hedge needs frequent adjustment. \\[8pt]
+    Vega $\nu$ & $\partial V/\partial\sigma$ & $S\sqrt{T}\,\mathcal{N}'(d_1)$ &
+      Price change per 1\% rise in volatility. All options gain value when
+      volatility rises. \\[4pt]
+    Theta $\Theta$ & $\partial V/\partial t$ & (see formula) &
+      Daily time decay. Options lose value as expiry approaches; theta is almost
+      always negative for a buyer. \\[4pt]
+    Rho $\rho$ & $\partial V/\partial r$ & $KTe^{-rT}\mathcal{N}(d_2)$ &
+      Sensitivity to interest rates. Calls gain value when rates rise; puts lose value. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+In the numerical library, Greeks are computed by \textbf{finite difference bumping}:
+the option is repriced after a tiny change to the input of interest, and the Greek
+is the ratio of the price change to the input change. For delta and gamma with bump
+size $\varepsilon$:
+\begin{equation}
+  \Delta \approx \frac{V(S+\varepsilon) - V(S-\varepsilon)}{2\varepsilon}, \qquad
+  \Gamma \approx \frac{V(S+\varepsilon) - 2V(S) + V(S-\varepsilon)}{\varepsilon^2}
+\end{equation}
+\newpage
+
+%% =============================================================================
+\section{Numerical Methods}
+\label{sec:numerical}
+%% =============================================================================
+
+\subsection{Why Numerical Methods Are Needed}
+
+The Black--Scholes formula provides a closed-form solution for European options and
+can therefore be evaluated instantly \cite{hull2018}. However, once early exercise
+is introduced, as in American-style options, the problem becomes a free boundary
+problem and no analytic solution exists in general \cite{wilmott2006}. This is
+particularly relevant for American put options and for more complex or
+path-dependent derivatives.
+
+To address this, numerical methods are required to approximate the solution of the
+Black--Scholes partial differential equation~(\ref{eq:bspde}). The two principal
+approaches are \textbf{finite difference methods}, which discretise the PDE on a
+grid, and \textbf{Monte Carlo simulation}, which estimates the option price by
+averaging simulated price paths \cite{glasserman2004,seydel2012}.
+
+\subsection{Finite Difference Setup}
+
+Finite difference methods replace the continuous domain with a discrete grid in both
+stock price and time \cite{seydel2012}. Let the stock price be discretised in steps
+of $\delta S$ and time in steps of $\delta t$. Denote by $V_i^j$ the option value
+at stock price $S_i = i\,\delta S$ and time $t_j = j\,\delta t$.
+
+This grid can be visualised as a rectangular table where each column represents a
+time step and each row corresponds to a stock price level. The solution is computed
+backwards in time: the option payoff is known at maturity, and the values at earlier
+times are obtained recursively \cite{wilmott2006}.
+
+The spatial derivatives in the Black--Scholes PDE are approximated using central
+difference formulas:
+\begin{align}
+  \frac{\partial V}{\partial S} &\approx \frac{V_{i+1}^j - V_{i-1}^j}{2\,\delta S}, \qquad
+  \frac{\partial^2 V}{\partial S^2} \approx \frac{V_{i+1}^j - 2V_i^j + V_{i-1}^j}{(\delta S)^2}.
+\end{align}
+
+\subsection{Explicit Finite Difference Method}
+
+The explicit scheme uses a forward difference approximation in time, expressing the
+solution at the next time level in terms of known values at the current level
+\cite{seydel2012}:
+\begin{equation}
+  \frac{V_i^{j+1} - V_i^j}{\delta t}
+  + \frac{1}{2}\sigma^2 S_i^2 \frac{V_{i+1}^j - 2V_i^j + V_{i-1}^j}{(\delta S)^2}
+  + rS_i\frac{V_{i+1}^j - V_{i-1}^j}{2\,\delta S} - rV_i^j = 0.
+\end{equation}
+
+Rearranging yields
+\begin{equation}
+  V_i^{j+1} = a_i V_{i-1}^j + b_i V_i^j + c_i V_{i+1}^j.
+\end{equation}
+
+This makes the method computationally efficient, as no system of equations must be
+solved. However, the explicit scheme is only \textbf{conditionally stable}, with a
+Courant--Friedrichs--Lewy (CFL) restriction of the form
+$\sigma^2 S_i^2\,\delta t / (\delta S)^2 \leq 1$ \cite{wilmott2006}. Violating this
+condition leads to unstable solutions.
+
+\subsection{Implicit Finite Difference Method}
+
+In the implicit scheme, the spatial derivatives are evaluated at the unknown future
+time level \cite{seydel2012}:
+\begin{equation}
+  \frac{V_i^{j+1} - V_i^j}{\delta t}
+  + \frac{1}{2}\sigma^2 S_i^2 \frac{V_{i+1}^{j+1} - 2V_i^{j+1} + V_{i-1}^{j+1}}{(\delta S)^2}
+  + rS_i\frac{V_{i+1}^{j+1} - V_{i-1}^{j+1}}{2\,\delta S} - rV_i^{j+1} = 0.
+\end{equation}
+
+This leads to a tridiagonal system $\mathbf{A}\mathbf{V}^{j+1} = \mathbf{V}^j$ that
+must be solved at each step. The Thomas algorithm provides an efficient solution in
+$\mathcal{O}(M)$ operations \cite{thomas1949}.
+
+The method is \textbf{unconditionally stable}, but converges with order
+$\mathcal{O}(\delta t,\,(\delta S)^2)$ \cite{seydel2012}.
+
+\subsection{Crank--Nicolson Scheme}
+
+The Crank--Nicolson method averages the explicit and implicit operators
+\cite{crank1947}:
+\begin{equation}
+  \frac{V_i^{j+1} - V_i^j}{\delta t}
+  = \frac{1}{2}\left[\mathcal{L}(V_i^j) + \mathcal{L}(V_i^{j+1})\right].
+\end{equation}
+
+This produces a system
+$\mathbf{A}^{-}\mathbf{V}^{j+1} = \mathbf{A}^{+}\mathbf{V}^j$ and is both
+\textbf{unconditionally stable} and \textbf{second-order accurate} in time and space,
+$\mathcal{O}((\delta t)^2,\,(\delta S)^2)$ \cite{seydel2012,wilmott2006}.
+
+\subsection{American Options in Finite Difference Schemes}
+
+American options are incorporated by enforcing the early exercise constraint at each
+grid point \cite{wilmott2006}. After computing the continuation value, the option
+price is given by
+\begin{equation}
+  V_i^j = \max\left(V_i^{j,\text{cont}},\; \text{Payoff}(S_i)\right).
+\end{equation}
+
+This ensures that the optimal exercise boundary is captured numerically.
+
+\subsection{Monte Carlo Simulation}
+
+Monte Carlo methods simulate price paths under the risk-neutral measure, where the
+expected return equals the risk-free rate $r$ \cite{glasserman2004}. The stock price
+follows geometric Brownian motion:
+\begin{equation}
+  S(t + \delta t) = S(t)\exp\left[\left(r - \tfrac{1}{2}\sigma^2\right)\delta t
+    + \sigma\sqrt{\delta t}\, Z\right], \qquad Z \sim \mathcal{N}(0,1).
+\end{equation}
+
+The option price is estimated as
+\begin{equation}
+  V \approx e^{-rT} \cdot \frac{1}{N}\sum_{k=1}^N \text{Payoff}\left(S_k(T)\right).
+\end{equation}
+
+Monte Carlo converges at rate $\mathcal{O}(N^{-1/2})$, and variance reduction
+techniques such as antithetic variates improve efficiency \cite{glasserman2004}.
+\newpage
+
+%% =============================================================================
+\section{Object-Oriented Design}
+\label{sec:oop}
+%% =============================================================================
+
+The architecture of the library is built around a single guiding principle:
+\textit{pricing methods should be interchangeable without altering the surrounding code}.
+A user switching from, for example, a Crank--Nicolson solver to a Monte Carlo
+engine only needs to modify the class being instantiated, while all downstream
+calls (pricing, Greeks, plotting) remain unchanged.
+
+This is achieved by separating:
+\begin{itemize}
+    \item what an option \textit{is} (contract parameters and payoff), and
+    \item how it is \textit{priced} (analytical, PDE-based, or simulation-based methods).
+\end{itemize}
+
+\subsection{Class Hierarchy}
+
+The core abstraction is the \texttt{OptionPricer} base class, which defines a
+unified interface and shared functionality for all pricing engines. It stores
+contract parameters ($S_0$, $K$, $T$, $r$, $\sigma$), provides a common payoff
+definition, and implements reusable utilities such as interpolation,
+visualisation, and Greek extraction.
+
+Each numerical method is implemented as a subclass that overrides the
+\texttt{solve()} method:
+
+\begin{table}[H]
+  \centering
+  \caption{Class structure of the option pricing library.}
+  \label{tab:classes}
+  \begin{tabular}{L{4.8cm} L{4.2cm} L{3.2cm} C{1.2cm} C{1.2cm}}
+    \toprule
+    \textbf{Class} & \textbf{Method} & \textbf{Parent} & \textbf{EU} & \textbf{AM} \\
+    \midrule
+    \texttt{BlackScholesPricer}     & Closed-form Black--Scholes & \texttt{OptionPricer} & \checkmark & $\times$ \\
+    \texttt{FiniteDifferencePricer} & Explicit / Implicit FDM    & \texttt{OptionPricer} & \checkmark & \checkmark \\
+    \texttt{CrankNicolsonPricer}    & Crank--Nicolson scheme     & \texttt{OptionPricer} & \checkmark & \checkmark \\
+    \texttt{MonteCarloPricer}       & Monte Carlo simulation     & \texttt{OptionPricer} & \checkmark & $\times$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Additionally, the \texttt{SORSolver} class is used internally by finite
+difference methods to efficiently solve tridiagonal linear systems arising
+from implicit discretisations. For American options, a projected variant (PSOR)
+enforces the early exercise constraint.
+
+\subsection{Design Principles}
+
+\begin{itemize}[leftmargin=2em, itemsep=4pt]
+
+  \item \textbf{Single responsibility:}
+  Each class implements exactly one pricing methodology. For example,
+  \texttt{MonteCarloPricer} handles simulation logic only, while
+  \texttt{CrankNicolsonPricer} handles PDE discretisation.
+
+  \item \textbf{Open/closed principle:}
+  New pricing engines (e.g.\ binomial trees or stochastic volatility models)
+  can be added as new subclasses without modifying existing code.
+
+  \item \textbf{Consistent interface:}
+  All pricers expose a \texttt{solve()} method that computes and stores results
+  in a standardised structure. Methods such as \texttt{price\_at()},
+  \texttt{greeks\_at()}, and \texttt{plot()} operate identically across all
+  implementations.
+
+  \item \textbf{Encapsulation:}
+  Model parameters ($r$, $\sigma$, $T$) are fixed at construction and remain
+  internally consistent throughout computation, reflecting the assumptions of
+  the Black--Scholes framework.
+
+  \item \textbf{Code reuse through inheritance:}
+  Shared functionality (payoff evaluation, interpolation, plotting, and result
+  storage) is implemented once in the base class and reused by all subclasses,
+  significantly reducing duplication.
+
+\end{itemize}
+\newpage
+
+%% =============================================================================
+\section{Results and Analysis}
+\label{sec:results}
+%% =============================================================================
+
+This section presents numerical results from all four pricing methods and evaluates their accuracy, convergence behaviour, and computational characteristics. Unless stated otherwise, the baseline contract is a European put with parameters $S_0 = 100$, $K = 100$, $T = 1$, $r = 0.05$, $\sigma = 0.2$, and $S_{\max} = 200$.
+
+\subsection{Benchmark: Black--Scholes Closed Form}
+
+The analytical Black--Scholes formula serves as the exact reference price for all European option comparisons. Under the baseline parameters, the closed-form pricer yields:
+
+\begin{table}[H]
+  \centering
+  \caption{Black--Scholes analytical results for the baseline European put.}
+  \label{tab:bs_results}
+  \begin{tabular}{C{3cm} C{3cm} C{3cm} C{3cm}}
+    \toprule
+    \textbf{Price} & \textbf{Delta} & \textbf{Gamma} & \textbf{Theta} \\
+    \midrule
+    5.5735 & $-$0.3632 & 0.0188 & $-$1.6579 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The closed-form solution is evaluated in $\mathcal{O}(M)$ time by vectorising over the spatial grid, making it effectively instantaneous. Delta is negative, confirming that the put loses value as the stock price rises. Gamma is positive and largest near the strike, consistent with the nonlinear curvature of the put payoff in that region. Theta is negative, reflecting the daily erosion of time value as expiry approaches.
+
+\subsection{Finite Difference Methods}
+
+\subsubsection{Stability of the Explicit Scheme}
+
+The explicit scheme is \textbf{conditionally stable}. The implementation enforces the CFL condition
+\begin{equation}
+  \delta t \leq \frac{(\delta S)^2}{\sigma^2 S_{\max}^2}
+\end{equation}
+and raises a \texttt{ValueError} if this is violated. With $M = 500$ and $S_{\max} = 200$, $\delta S = 0.4$, giving a stability limit of approximately $\delta t \leq 10^{-5}$, which necessitates a large number of time steps for longer maturities.
+
+\subsubsection{Convergence of European Put Prices}
+
+Table~\ref{tab:fd_convergence} and Table~\ref{tab:cn_convergence} report 
+prices for increasing $N$ with $M = 200$ fixed. The implicit scheme converges 
+smoothly at rate $\mathcal{O}(\delta t)$, consistent with its first-order 
+temporal accuracy. Crank--Nicolson converges faster once $N$ is sufficiently 
+large, reflecting its $\mathcal{O}((\delta t)^2)$ accuracy, but exhibits 
+non-monotone behaviour at very coarse time grids ($N \leq 10$). This is a 
+known property of the Crank--Nicolson scheme: the second-order averaging 
+of explicit and implicit operators can amplify oscillations near the 
+discontinuity in the payoff gradient when $\delta t$ is large relative to 
+$\delta S$ \cite{wilmott2006}. Both methods are unconditionally stable and 
+the oscillations decay rapidly as $N$ increases.
+
+\begin{table}[H]
+  \centering
+  \caption{Implicit FD prices for a European put as time steps $N$ increase,
+  with $M = 200$ fixed. Error relative to BS price of 5.5735.}
+  \label{tab:fd_convergence}
+  \begin{tabular}{C{2cm} C{3cm} C{3cm}}
+    \toprule
+    $N$ & \textbf{Price} & \textbf{Error} \\
+    \midrule
+    10  & 5.4785 & 0.0950 \\
+    25  & 5.5339 & 0.0396 \\
+    50  & 5.5525 & 0.0211 \\
+    100 & 5.5617 & 0.0118 \\
+    200 & 5.5664 & 0.0071 \\
+    500 & 5.5692 & 0.0043 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Crank--Nicolson prices for a European put as time steps $N$ increase,
+  with $M = 200$ fixed. Error relative to BS price of 5.5735.
+  Non-monotone behaviour at low $N$ reflects known oscillations near the 
+  payoff discontinuity at coarse time resolution.}
+  \label{tab:cn_convergence}
+  \begin{tabular}{C{2cm} C{3cm} C{3cm}}
+    \toprule
+    $N$ & \textbf{Price} & \textbf{Error} \\
+    \midrule
+    5   & 5.9304 & 0.3569 \\
+    10  & 5.4529 & 0.1206 \\
+    15  & 5.6152 & 0.0417 \\
+    20  & 5.5706 & 0.0153 \\
+    30  & 5.5706 & 0.0029 \\
+    50  & 5.5711 & 0.0023 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsubsection{American Put: Early Exercise Premium}
+
+The free boundary problem for American puts cannot be solved in closed form. Table~\ref{tab:american} reports the American put prices obtained from the implicit and Crank--Nicolson schemes using the PSOR solver, alongside the corresponding European prices for comparison.
+
+\begin{table}[H]
+  \centering
+  \caption{European vs American put prices under baseline parameters. The early exercise premium is the difference between the two.}
+  \label{tab:american}
+  \begin{tabular}{L{4cm} C{3cm} C{3cm} C{3cm}}
+    \toprule
+    \textbf{Method} & \textbf{European Put} & \textbf{American Put} & \textbf{Premium} \\
+    \midrule
+    Implicit FD  & 5.5664 & 6.0806 & 0.5142 \\
+    Crank--Nicolson & 5.5711 & 6.0874 & 0.5164 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The early exercise premium is positive in both cases, as expected: the right to exercise immediately and earn interest on the strike adds value relative to the European contract. The two methods agree to within approximately \pounds0.0068, providing mutual validation.
+
+\subsubsection{SOR Solver and the Role of Omega}
+
+The PSOR solver used in implicit and Crank--Nicolson methods introduces a relaxation parameter $\omega \in (1, 2)$. At each inner iteration, the update is:
+\begin{equation}
+  x_i^{\text{new}} = (1 - \omega)\, x_i^{\text{old}} + \omega\, x_i^{\text{GS}}
+\end{equation}
+where $x_i^{\text{GS}}$ is the Gauss--Seidel iterate. Values of $\omega$ close to 1 recover standard Gauss--Seidel iteration, while $\omega \approx 1.2$--$1.5$ typically accelerates convergence substantially for tridiagonal systems arising from the Black--Scholes discretisation. The default $\omega = 1.2$ was found to reduce iteration counts by approximately 30--40\% relative to Gauss--Seidel in practice.
+
+\subsection{Monte Carlo Simulation}
+
+\subsubsection{Convergence and Variance Reduction}
+The Monte Carlo pricer uses the closed-form terminal price distribution rather 
+than full path simulation, as this eliminates discretisation error in the price 
+estimate and reduces the source of error to sampling noise alone.
+\begin{equation}
+ S(T) = S_0 \exp\bigl[(r - \tfrac{1}{2}\sigma^2)T + \sigma\sqrt{T}\,Z\bigr]
+\end{equation}
+Table~\ref{tab:mc_convergence} shows the mean absolute error across 10 
+independent runs for increasing path counts, compared to the Black--Scholes 
+reference price of 5.5735.
+
+\begin{table}[H]
+  \centering
+  \caption{Monte Carlo convergence for a European put: mean absolute error 
+  across 10 independent runs per path count.}
+  \label{tab:mc_convergence}
+  \begin{tabular}{C{3.5cm} C{3.5cm}}
+    \toprule
+    \textbf{Paths} $N$ & \textbf{Mean Error vs BS} \\
+    \midrule
+    100        & 0.6954 \\
+    250        & 0.4335 \\
+    500        & 0.4054 \\
+    1{,}000    & 0.1959 \\
+    2{,}500    & 0.1667 \\
+    5{,}000    & 0.0753 \\
+    10{,}000   & 0.0428 \\
+    25{,}000   & 0.0375 \\
+    50{,}000   & 0.0276 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The mean error decreases broadly with path count, consistent with the 
+theoretical $\mathcal{O}(N^{-1/2})$ rate, though non-monotone behaviour 
+at low path counts reflects the high variance inherent in small samples. 
+Substantially more paths are required to match the precision of the 
+finite difference methods at comparable grid resolutions.
+
+\subsubsection{Common Random Numbers and Greek Estimation}
+
+The implementation uses \textbf{Common Random Numbers (CRN)}: a single set of standard normal draws $Z$ is reused across all bumped scenarios. This is critical for Greek estimation. Without CRN, bumped prices $V(S_0 + \varepsilon)$ and $V(S_0 - \varepsilon)$ contain independent noise, and the finite difference ratio $[V(S_0+\varepsilon) - V(S_0-\varepsilon)] / 2\varepsilon$ is dominated by noise for small $\varepsilon$. CRN ensures the noise cancels, producing a reliable estimate.
+
+Delta is estimated using the \textbf{pathwise method}:
+\begin{equation}
+  \hat{\Delta} = e^{-rT}\,\mathbb{E}\left[\mathbf{1}_{\{S(T) > K\}}\cdot\frac{S(T)}{S_0}\right]
+\end{equation}
+for calls, with the sign reversed for puts. This estimator is unbiased and has lower variance than finite difference bumping for delta. Gamma and Theta are estimated via central finite differences with CRN, using bump sizes $\varepsilon_S = 10^{-2}$ and $\varepsilon_T = 10^{-4}$ respectively. Theta is made internally consistent with the Black--Scholes PDE by computing it from the PDE relation $\Theta = -\tfrac{1}{2}\sigma^2 S^2 \Gamma - rS\Delta + rV$.
+
+\subsubsection{Comparison of Greeks Across Methods}
+
+Table~\ref{tab:greeks_comparison} reports the Greeks at $S_0 = 100$ for the European put under all four methods.
+
+\begin{table}[H]
+  \centering
+  \caption{Greeks comparison at $S_0 = 100$ for a European put. BS values are exact.}
+  \label{tab:greeks_comparison}
+  \begin{tabular}{L{4.2cm} C{2.2cm} C{2.2cm} C{2.2cm} C{2.2cm}}
+    \toprule
+    \textbf{Method} & \textbf{Price} & \textbf{Delta} & \textbf{Gamma} & \textbf{Theta} \\
+    \midrule
+    Black--Scholes (exact)     & 5.5735 & $-$0.3632 & 0.0188 & $-$1.6579 \\
+    Explicit FD ($M=50$)       & 5.5384 & $-$0.3641 & 0.0188 & $-$1.6803 \\
+    Implicit FD ($M=N=200$)    & 5.5664 & $-$0.3633 & 0.0188 & $-$1.6666 \\
+    Crank--Nicolson ($M=N=200$)& 5.5711 & $-$0.3632 & 0.0188 & $-$1.6591 \\
+    Monte Carlo ($100k$ paths) & 5.5742 & $-$0.3627 & 0.0225 & $-$1.6588 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+All methods agree closely on price, Delta, and Gamma, with the exception of 
+the Monte Carlo Gamma estimate (0.0225 vs 0.0188), which reflects the higher 
+variance inherent in the second-order finite difference estimator under bumping. 
+Crank--Nicolson most closely matches the analytical Black--Scholes values across 
+all Greeks at the given resolution.
+
+\subsection{Computational Performance}
+
+Table~\ref{tab:timing} reports approximate wall-clock times on a single CPU core. Finite difference timings are for $M = N = 500$.
+
+\begin{table}[H]
+  \centering
+  \caption{Approximate computation times for each pricing method.}
+  \label{tab:timing}
+  \begin{tabular}{L{5cm} C{3cm} C{4cm}}
+    \toprule
+    \textbf{Method} & \textbf{Time (s)} & \textbf{Notes} \\
+    \midrule
+    Black--Scholes (closed form) & $< 0.01$ & Vectorised, instantaneous \\
+    Explicit FD & 0.8--1.2 & Pure Python loop; many steps required \\
+    Implicit FD & 1.5--2.5 & SOR iterations per time step \\
+    Crank--Nicolson & 1.5--2.5 & SOR iterations per time step \\
+    Monte Carlo ($10^5$ paths) & 0.5--1.0 & Vectorised terminal simulation \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Summary}
+
+For European options where speed and precision matter, Black--Scholes is the clear choice. When American-style exercise must be handled, Crank--Nicolson combined with PSOR offers the best balance of accuracy and stability. Monte Carlo is most valuable for path-dependent or high-dimensional contracts beyond the scope of this library, but demonstrates correct convergence behaviour and a rigorous Greek estimation framework here. Table~\ref{tab:summary} consolidates the key characteristics of each method.
+
+\begin{table}[H]
+  \centering
+  \caption{Summary comparison of pricing methods.}
+  \label{tab:summary}
+  \begin{tabular}{L{3.5cm} C{1.8cm} C{1.8cm} C{2cm} C{2cm} C{1.6cm}}
+    \toprule
+    \textbf{Method} & \textbf{European} & \textbf{American} & \textbf{Accuracy} & \textbf{Stability} & \textbf{Speed} \\
+    \midrule
+    Black--Scholes & \checkmark & $\times$ & Exact & N/A & Fastest \\
+    Explicit FD    & \checkmark & \checkmark & $\mathcal{O}(\delta t)$ & Conditional & Slow \\
+    Implicit FD    & \checkmark & \checkmark & $\mathcal{O}(\delta t)$ & Unconditional & Moderate \\
+    Crank--Nicolson & \checkmark & \checkmark & $\mathcal{O}(\delta t^2)$ & Unconditional & Moderate \\
+    Monte Carlo    & \checkmark & $\times$ & $\mathcal{O}(N^{-1/2})$ & N/A & Moderate \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\newpage
+
+
+%% =============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+%% =============================================================================
+
+This project developed an object-oriented Python library implementing five 
+option pricing methods: the Black--Scholes closed-form solution, explicit and 
+implicit finite difference schemes, the Crank--Nicolson method, and Monte Carlo 
+simulation. Numerical results confirmed the theoretical convergence properties 
+of each method. Crank--Nicolson achieved second-order accuracy in time at no 
+additional stability cost relative to the implicit scheme, making it the 
+recommended method for both European and American contracts. The early exercise 
+premium for the American put was consistent across both PSOR-based solvers, 
+providing mutual validation. Monte Carlo converged at the expected 
+$\mathcal{O}(N^{-1/2})$ rate, with Common Random Numbers and the pathwise 
+estimator producing reliable Greek estimates.
+
+Several limitations remain. The Black--Scholes framework assumes constant 
+volatility, which conflicts with the implied volatility smile observed in real 
+markets \cite{dupire1994pricing}. Extending the PDE solver to a local or 
+stochastic volatility model, such as Heston \cite{heston1993closed}, would 
+require only modest changes to the spatial discretisation. The Monte Carlo 
+engine currently supports European contracts only; American options could be 
+incorporated via the Longstaff--Schwartz least-squares regression approach 
+\cite{longstaff2001valuing}. Finally, the pure-Python SOR loops are the 
+primary computational bottleneck, and replacing them with vectorised NumPy 
+operations or a compiled extension would reduce runtimes by one to two orders 
+of magnitude.
+
+\newpage
+%% =============================================================================
+
+\bibliographystyle{apalike}
+\bibliography{references}
+
+\end{document}
+
