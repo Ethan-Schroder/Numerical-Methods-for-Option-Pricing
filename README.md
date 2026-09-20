@@ -2,8 +2,6 @@
 
 A Python library for pricing vanilla options and computing their Greeks (sensitivities) using five distinct methods. The library is built with object-oriented design and handles both European and American contracts.
 
-> Developed as part of a dissertation on quantitative finance and numerical analysis.
-
 ---
 
 ## Methods Implemented
